@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math-A-Day Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .math-container {
+            line-height: 1.6;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .pulse-animation {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .loading-dots::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-5xl font-bold text-gray-800 mb-4">📊 Math-A-Day</h1>
+            <p class="text-xl text-gray-600">Challenge yourself with a new math problem every day!</p>
+            <div id="dateDisplay" class="text-lg text-blue-600 font-medium mt-4"></div>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden text-center py-12">
+            <div class="inline-block p-8 bg-white rounded-2xl shadow-lg">
+                <div class="text-6xl mb-4 pulse-animation">🧮</div>
+                <h3 class="text-2xl font-semibold text-gray-700 mb-2">Generating Your Daily Problem</h3>
+                <p class="text-gray-500 loading-dots">Please wait</p>
+            </div>
+        </div>
+
+        <!-- Main Quiz Container -->
+        <div id="quizContainer" class="bg-white rounded-2xl shadow-xl p-8 mb-8">
+            <!-- Problem Info -->
+            <div id="problemInfo" class="flex flex-wrap gap-4 mb-6">
+                <span id="topicBadge" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"></span>
+                <span id="difficultyBadge" class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"></span>
+            </div>
+
+            <!-- Question -->
+            <div id="questionContainer" class="mb-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Today's Problem:</h2>
+                <div id="questionText" class="text-lg text-gray-700 math-container bg-gray-50 p-6 rounded-xl border-l-4 border-blue-500"></div>
+            </div>
+
+            <!-- Multiple Choice Options -->
+            <div id="optionsContainer" class="hidden mb-8">
+                <h3 class="text-lg font-medium text-gray-700 mb-4">Choose your answer:</h3>
+                <div id="optionsList" class="space-y-3"></div>
+            </div>
+
+            <!-- Text Input -->
+            <div id="inputContainer" class="mb-6">
+                <label for="answerInput" class="block text-lg font-medium text-gray-700 mb-3">Your Answer:</label>
+                <input type="text" id="answerInput" placeholder="Enter your answer here..." 
+                       class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none text-lg transition-colors">
+            </div>
+
+            <!-- Feedback -->
+            <div id="feedback" class="mb-6 text-center text-lg font-medium"></div>
+
+            <!-- Buttons -->
+            <div class="flex flex-wrap gap-4 justify-center">
+                <button id="submitBtn" class="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    Submit Answer
+                </button>
+                <button id="clearBtn" class="px-6 py-3 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-colors font-medium shadow-lg">
+                    Clear
+                </button>
+                <button id="explanationBtn" class="hidden px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium shadow-lg">
+                    Show Explanation
+                </button>
+                <button id="newProblemBtn" class="hidden px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium shadow-lg">
+                    Get New Problem
+                </button>
+            </div>
+        </div>
+
+        <!-- Explanation Section -->
+        <div id="explanationSection" class="hidden bg-green-50 rounded-2xl shadow-lg p-8 fade-in">
+            <h3 class="text-2xl font-semibold text-green-800 mb-4">📝 Detailed Explanation</h3>
+            <div id="explanationText" class="text-gray-700 math-container leading-relaxed"></div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-center">
+            <div class="text-6xl mb-4">❌</div>
+            <h3 class="text-2xl font-semibold text-red-800 mb-2">Oops! Something went wrong</h3>
+            <p class="text-red-600 mb-4">We couldn't generate today's problem. Please try again.</p>
+            <button id="retryBtn" class="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium">
+                Try Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class MathADayQuiz {
+            constructor() {
+                this.apiKey = "AIzaSyBzmtTjN_pHJgbIiNw5DdCCZwgxy--E1UM";
+                this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.apiKey}`;
+                this.currentProblem = null;
+                this.userAttempted = false;
+                this.selectedOption = null;
+                
+                this.initializeElements();
+                this.initializeEventListeners();
+                this.loadTodaysProblem();
+            }
+
+            initializeElements() {
+                this.elements = {
+                    dateDisplay: document.getElementById('dateDisplay'),
+                    loadingState: document.getElementById('loadingState'),
+                    quizContainer: document.getElementById('quizContainer'),
+                    errorState: document.getElementById('errorState'),
+                    topicBadge: document.getElementById('topicBadge'),
+                    difficultyBadge: document.getElementById('difficultyBadge'),
+                    questionText: document.getElementById('questionText'),
+                    optionsContainer: document.getElementById('optionsContainer'),
+                    optionsList: document.getElementById('optionsList'),
+                    inputContainer: document.getElementById('inputContainer'),
+                    answerInput: document.getElementById('answerInput'),
+                    feedback: document.getElementById('feedback'),
+                    submitBtn: document.getElementById('submitBtn'),
+                    clearBtn: document.getElementById('clearBtn'),
+                    explanationBtn: document.getElementById('explanationBtn'),
+                    newProblemBtn: document.getElementById('newProblemBtn'),
+                    explanationSection: document.getElementById('explanationSection'),
+                    explanationText: document.getElementById('explanationText'),
+                    retryBtn: document.getElementById('retryBtn')
+                };
+            }
+
+            initializeEventListeners() {
+                this.elements.submitBtn.addEventListener('click', () => this.submitAnswer());
+                this.elements.clearBtn.addEventListener('click', () => this.clearAnswer());
+                this.elements.explanationBtn.addEventListener('click', () => this.showExplanation());
+                this.elements.newProblemBtn.addEventListener('click', () => this.generateNewProblem());
+                this.elements.retryBtn.addEventListener('click', () => this.loadTodaysProblem());
+                this.elements.answerInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.submitAnswer();
+                });
+            }
+
+            getCurrentDate() {
+                return new Date().toDateString();
+            }
+
+            displayCurrentDate() {
+                const today = new Date();
+                const options = { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                };
+                this.elements.dateDisplay.textContent = today.toLocaleDateString('en-US', options);
+            }
+
+            async loadTodaysProblem() {
+                this.displayCurrentDate();
+                
+                const today = this.getCurrentDate();
+                const storedDate = localStorage.getItem('lastProblemDate');
+                const storedProblem = localStorage.getItem('mathADayProblem');
+
+                if (storedDate === today && storedProblem) {
+                    try {
+                        this.currentProblem = JSON.parse(storedProblem);
+                        this.displayProblem();
+                        this.showQuizContainer();
+                    } catch (e) {
+                        console.error('Error parsing stored problem:', e);
+                        await this.generateNewProblem();
+                    }
+                } else {
+                    await this.generateNewProblem();
+                }
+            }
+
+            async generateNewProblem() {
+                this.showLoadingState();
+                
+                const prompt = `Generate one high-school level math problem. It can be from algebra, geometry, trigonometry, or basic statistics/probability. Provide the question, the correct numerical answer (or exact string if non-numerical), and a detailed step-by-step explanation. Include 3 incorrect multiple-choice options along with the correct one. The problem should be clear and solvable. Use LaTeX notation for mathematical expressions where appropriate (e.g., $x^2$, $\\frac{1}{2}$, $\\sqrt{x}$).`;
+
+                const requestBody = {
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "object",
+                            properties: {
+                                id: { type: "string" },
+                                question: { type: "string" },
+                                options: { 
+                                    type: "array", 
+                                    items: { type: "string" } 
+                                },
+                                answer: { type: "string" },
+                                explanation: { type: "string" },
+                                topic: { type: "string" },
+                                difficulty: { type: "string" }
+                            },
+                            required: ["id", "question", "answer", "explanation", "topic", "difficulty"]
+                        }
+                    }
+                };
+
+                try {
+                    const response = await fetch(this.apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API request failed: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                        const problemText = data.candidates[0].content.parts[0].text;
+                        this.currentProblem = JSON.parse(problemText);
+                        
+                        // Store the problem and date
+                        localStorage.setItem('mathADayProblem', JSON.stringify(this.currentProblem));
+                        localStorage.setItem('lastProblemDate', this.getCurrentDate());
+                        
+                        this.displayProblem();
+                        this.showQuizContainer();
+                    } else {
+                        throw new Error('Invalid response format');
+                    }
+                } catch (error) {
+                    console.error('Error generating problem:', error);
+                    this.showErrorState();
+                }
+            }
+
+            displayProblem() {
+                if (!this.currentProblem) return;
+
+                // Display topic and difficulty badges
+                this.elements.topicBadge.textContent = this.currentProblem.topic || 'Math';
+                this.elements.difficultyBadge.textContent = this.currentProblem.difficulty || 'Medium';
+
+                // Display question
+                this.elements.questionText.innerHTML = this.currentProblem.question;
+
+                // Handle multiple choice options
+                if (this.currentProblem.options && this.currentProblem.options.length > 0) {
+                    this.displayMultipleChoice();
+                    this.elements.inputContainer.classList.add('hidden');
+                } else {
+                    this.elements.optionsContainer.classList.add('hidden');
+                    this.elements.inputContainer.classList.remove('hidden');
+                }
+
+                // Reset states
+                this.userAttempted = false;
+                this.selectedOption = null;
+                this.elements.feedback.textContent = '';
+                this.elements.explanationBtn.classList.add('hidden');
+                this.elements.newProblemBtn.classList.add('hidden');
+                this.elements.explanationSection.classList.add('hidden');
+                this.elements.submitBtn.disabled = false;
+                this.elements.answerInput.disabled = false;
+                this.elements.answerInput.value = '';
+
+                // Render math expressions
+                if (window.MathJax) {
+                    MathJax.typesetPromise([this.elements.questionText]);
+                }
+            }
+
+            displayMultipleChoice() {
+                this.elements.optionsContainer.classList.remove('hidden');
+                this.elements.optionsList.innerHTML = '';
+
+                this.currentProblem.options.forEach((option, index) => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all';
+                    optionDiv.innerHTML = `
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="answer" value="${option}" class="mr-3 w-4 h-4 text-blue-600">
+                            <span class="text-lg">${option}</span>
+                        </label>
+                    `;
+                    
+                    optionDiv.addEventListener('click', () => {
+                        const radio = optionDiv.querySelector('input[type="radio"]');
+                        radio.checked = true;
+                        this.selectedOption = option;
+                        
+                        // Update visual selection
+                        document.querySelectorAll('#optionsList > div').forEach(div => {
+                            div.classList.remove('border-blue-500', 'bg-blue-50');
+                            div.classList.add('border-gray-200');
+                        });
+                        optionDiv.classList.add('border-blue-500', 'bg-blue-50');
+                        optionDiv.classList.remove('border-gray-200');
+                    });
+
+                    this.elements.optionsList.appendChild(optionDiv);
+                });
+
+                // Render math in options
+                if (window.MathJax) {
+                    MathJax.typesetPromise([this.elements.optionsList]);
+                }
+            }
+
+            submitAnswer() {
+                if (this.userAttempted) return;
+
+                let userAnswer;
+                if (this.currentProblem.options && this.currentProblem.options.length > 0) {
+                    userAnswer = this.selectedOption;
+                    if (!userAnswer) {
+                        this.elements.feedback.innerHTML = '<span class="text-red-600">Please select an answer!</span>';
+                        return;
+                    }
+                } else {
+                    userAnswer = this.elements.answerInput.value.trim();
+                    if (!userAnswer) {
+                        this.elements.feedback.innerHTML = '<span class="text-red-600">Please enter an answer!</span>';
+                        return;
+                    }
+                }
+
+                this.userAttempted = true;
+                const isCorrect = this.checkAnswer(userAnswer, this.currentProblem.answer);
+
+                if (isCorrect) {
+                    this.elements.feedback.innerHTML = '<span class="text-green-600 text-xl">🎉 Correct! Well done!</span>';
+                    this.elements.submitBtn.disabled = true;
+                    this.elements.answerInput.disabled = true;
+                } else {
+                    this.elements.feedback.innerHTML = '<span class="text-red-600 text-xl">❌ Incorrect. Try to understand the solution!</span>';
+                }
+
+                this.elements.explanationBtn.classList.remove('hidden');
+                this.elements.newProblemBtn.classList.remove('hidden');
+            }
+
+            checkAnswer(userAnswer, correctAnswer) {
+                // Normalize both answers for comparison
+                const normalize = (str) => str.toString().toLowerCase().trim().replace(/\s+/g, '');
+                
+                const normalizedUser = normalize(userAnswer);
+                const normalizedCorrect = normalize(correctAnswer);
+
+                // Direct string comparison
+                if (normalizedUser === normalizedCorrect) return true;
+
+                // Try numeric comparison
+                const userNum = parseFloat(userAnswer);
+                const correctNum = parseFloat(correctAnswer);
+                
+                if (!isNaN(userNum) && !isNaN(correctNum)) {
+                    return Math.abs(userNum - correctNum) < 0.0001;
+                }
+
+                return false;
+            }
+
+            clearAnswer() {
+                this.elements.answerInput.value = '';
+                this.elements.feedback.textContent = '';
+                this.selectedOption = null;
+                
+                // Clear multiple choice selection
+                document.querySelectorAll('#optionsList > div').forEach(div => {
+                    div.classList.remove('border-blue-500', 'bg-blue-50');
+                    div.classList.add('border-gray-200');
+                });
+                document.querySelectorAll('input[name="answer"]').forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+
+            showExplanation() {
+                this.elements.explanationText.innerHTML = this.currentProblem.explanation;
+                this.elements.explanationSection.classList.remove('hidden');
+                this.elements.explanationBtn.disabled = true;
+                
+                // Render math in explanation
+                if (window.MathJax) {
+                    MathJax.typesetPromise([this.elements.explanationText]);
+                }
+
+                // Scroll to explanation
+                this.elements.explanationSection.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start' 
+                });
+            }
+
+            showLoadingState() {
+                this.elements.loadingState.classList.remove('hidden');
+                this.elements.quizContainer.classList.add('hidden');
+                this.elements.errorState.classList.add('hidden');
+                this.elements.explanationSection.classList.add('hidden');
+            }
+
+            showQuizContainer() {
+                this.elements.loadingState.classList.add('hidden');
+                this.elements.quizContainer.classList.remove('hidden');
+                this.elements.errorState.classList.add('hidden');
+            }
+
+            showErrorState() {
+                this.elements.loadingState.classList.add('hidden');
+                this.elements.quizContainer.classList.add('hidden');
+                this.elements.errorState.classList.remove('hidden');
+                this.elements.explanationSection.classList.add('hidden');
+            }
+        }
+
+        // Initialize the quiz when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new MathADayQuiz();
+        });
+    </script>
+</body>
+</html>
